@@ -27,7 +27,7 @@ class ProductProduct(models.Model):
         digits = self.env.ref('product.decimal_product_uom').digits or 2
         if float_compare(svl_move_qty, origin_move_remaining_qty, precision_digits=digits) != 0:
             svl_move.picking_id.message_post(
-                body="The product #{0} units have already been consumed in other operations. FIFO costing will be used".format(svl_move.product_id.id),
+                body="Some or all units for product {0} (ID: {1}) have already been consumed in other operations. FIFO costing will be used.".format(svl_move.product_id.default_code, svl_move.product_id.id),
                 subtype_xmlid="mail.mt_note",
             )
             return super()._run_fifo(quantity, company)
