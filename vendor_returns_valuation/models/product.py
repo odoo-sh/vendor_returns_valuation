@@ -11,6 +11,10 @@ class ProductProduct(models.Model):
     def _run_fifo(self, quantity, company):
         self.ensure_one()
 
+        # only process fifo products
+        if self.cost_method != 'fifo':
+            return super()._run_fifo(quantity, company)
+
         # pre check and post message and continue general flow
         svl_move = self.env.context.get("svl_move")
         if svl_move and (
@@ -63,7 +67,6 @@ class ProductProduct(models.Model):
             qty_to_take_on_candidates -= qty_taken_on_candidate
             tmp_value += value_taken_on_candidate
 
-            # TODO check later
             if float_is_zero(qty_to_take_on_candidates, precision_rounding=self.uom_id.rounding):
                 if float_is_zero(candidate.remaining_qty, precision_rounding=self.uom_id.rounding):
                     next_candidates = remaining_candidates.filtered(lambda svl: svl.remaining_qty > 0)
