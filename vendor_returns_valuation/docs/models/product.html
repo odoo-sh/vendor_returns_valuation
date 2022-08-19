@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>product.py</title>
+  <link rel="stylesheet" href="../pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <div class='section'>
+    <div class='docs'><h1>product.py</h1></div>
+  </div>
+  <div class='clearall'>
+  <div class='section' id='section-0'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-0'>#</a>
+      </div>
+      <p>copyright 2022 Sodexis
+license OPL-1 (see license file for full copyright and licensing details).</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">odoo</span> <span class="kn">import</span> <span class="n">models</span>
+<span class="kn">from</span> <span class="nn">odoo.tools</span> <span class="kn">import</span> <span class="n">float_compare</span><span class="p">,</span> <span class="n">float_is_zero</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-1'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-1'>#</a>
+      </div>
+      <h3><span id="extend-product.product" href="extend-product.product"> Extend product.product </span></h3>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">class</span> <span class="nc">ProductProduct</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">_inherit</span> <span class="o">=</span> <span class="s2">&quot;product.product&quot;</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-2'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-2'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">_run_fifo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantity</span><span class="p">,</span> <span class="n">company</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-3'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-3'>#</a>
+      </div>
+      <p>Ensure we have only one product record in self</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">ensure_one</span><span class="p">()</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-4'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-4'>#</a>
+      </div>
+      <p>Only process fifo products.
+If costing is not fifo, then give control to base method
+to process it using the general flow.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_method</span> <span class="o">!=</span> <span class="s1">&#39;fifo&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_run_fifo</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">company</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-5'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-5'>#</a>
+      </div>
+      <p>Grab the move that we are actually creating the valuation for.
+It will be in the context that we added in  <a href="stock_move.html#svl_move_context">stock_move.py</a></p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">svl_move</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;svl_move&quot;</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-6'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-6'>#</a>
+      </div>
+      <p>Our specs is to process vendor returns only.
+In the current move (return move) odoo will add a reference to the origin move
+that it is returned from on the field <strong>orgin_returned_move_id</strong>.
+If the current move doesn&rsquo;t hold value in that field. It is not considered as retrun
+then we give the control to base method.
+If the current move hold the value in origin returned move, then
+we need check the origin is of type <strong>incoming</strong> (Receipt). If not, then give
+control to base method to process it using the general flow.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">if</span> <span class="n">svl_move</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="n">svl_move</span><span class="o">.</span><span class="n">origin_returned_move_id</span>
+            <span class="ow">or</span> <span class="n">svl_move</span><span class="o">.</span><span class="n">origin_returned_move_id</span><span class="o">.</span><span class="n">picking_id</span><span class="o">.</span><span class="n">picking_type_code</span>
+            <span class="o">!=</span> <span class="s2">&quot;incoming&quot;</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_run_fifo</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">company</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-7'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-7'>#</a>
+      </div>
+      <h3><span id="check-whether-origin-move's-quantity-was-used." href="check-whether-origin-move's-quantity-was-used."> Check whether origin move&rsquo;s quantity was used. </span></h3>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-8'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-8'>#</a>
+      </div>
+      <p>Origin move from which the current move is created</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">origin_move</span> <span class="o">=</span> <span class="n">svl_move</span><span class="o">.</span><span class="n">origin_returned_move_id</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-9'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-9'>#</a>
+      </div>
+      <p>Current move quantity (quantity we are returning)</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">svl_move_qty</span> <span class="o">=</span> <span class="n">svl_move</span><span class="o">.</span><span class="n">product_uom_qty</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-10'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-10'>#</a>
+      </div>
+      <p>Origin move&rsquo;s stock valuations</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">origin_move_layers</span> <span class="o">=</span> <span class="n">origin_move</span><span class="o">.</span><span class="n">sudo</span><span class="p">()</span><span class="o">.</span><span class="n">stock_valuation_layer_ids</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-11'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-11'>#</a>
+      </div>
+      <p>Origin move&rsquo;s total available quantity</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">origin_move_remaining_qty</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">origin_move_layers</span><span class="o">.</span><span class="n">mapped</span><span class="p">(</span><span class="s2">&quot;remaining_qty&quot;</span><span class="p">))</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-12'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-12'>#</a>
+      </div>
+      <p>Product UOM decimal accuracy for rounding move quantity and origin move quantity</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">digits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="s1">&#39;product.decimal_product_uom&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">digits</span> <span class="ow">or</span> <span class="mi">2</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-13'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-13'>#</a>
+      </div>
+      <p>Comparing the current move quantity and available origin move quantity.
+Result of float_compare should be zero. It means both values are same.
+As per our specs, we can return the origin move as the quantity is matched.
+If the result is not zero, then we have to post the message on the return picking
+and give control to base metod.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">if</span> <span class="n">float_compare</span><span class="p">(</span><span class="n">svl_move_qty</span><span class="p">,</span> <span class="n">origin_move_remaining_qty</span><span class="p">,</span> <span class="n">precision_digits</span><span class="o">=</span><span class="n">digits</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">svl_move</span><span class="o">.</span><span class="n">picking_id</span><span class="o">.</span><span class="n">message_post</span><span class="p">(</span>
+                <span class="n">body</span><span class="o">=</span><span class="s2">&quot;Some or all units for product </span><span class="si">{0}</span><span class="s2"> (ID: </span><span class="si">{1}</span><span class="s2">) have already been consumed in other operations. FIFO costing will be used.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">svl_move</span><span class="o">.</span><span class="n">product_id</span><span class="o">.</span><span class="n">default_code</span><span class="p">,</span> <span class="n">svl_move</span><span class="o">.</span><span class="n">product_id</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+                <span class="n">subtype_xmlid</span><span class="o">=</span><span class="s2">&quot;mail.mt_note&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_run_fifo</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">company</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-14'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-14'>#</a>
+      </div>
+      <h3><span id="find-back-incoming-stock-valuation-layers-(called-candidates-here)-to-value-<code>quantity</code>." href="find-back-incoming-stock-valuation-layers-(called-candidates-here)-to-value-<code>quantity</code>."> Find back incoming stock valuation layers (called candidates here) to value <code>quantity</code>.</span></h3>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-15'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-15'>#</a>
+      </div>
+      <p>Quantities we are returning</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">qty_to_take_on_candidates</span> <span class="o">=</span> <span class="n">quantity</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-16'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-16'>#</a>
+      </div>
+      <p>All stock valuation layers for the product that have remaining qty</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">all_candidates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;stock.valuation.layer&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sudo</span><span class="p">()</span><span class="o">.</span><span class="n">search</span><span class="p">([</span>
+            <span class="p">(</span><span class="s1">&#39;product_id&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;remaining_qty&#39;</span><span class="p">,</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;company_id&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="n">company</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+        <span class="p">])</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-17'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-17'>#</a>
+      </div>
+      <p>We consider here that our origin move layers only.
+As we are going to return the products that we received in the current Receipt.
+In this place odoo will consider all the candidates (all stock valuation for that product) in general flow.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">candidates</span> <span class="o">=</span> <span class="n">origin_move_layers</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-18'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-18'>#</a>
+      </div>
+      <p>Remaining candidates except origin move candidates.
+We will use that to compute cost price of the product.
+It is as same as the base method</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">remaining_candidates</span> <span class="o">=</span> <span class="n">all_candidates</span> <span class="o">-</span> <span class="n">candidates</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-19'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-19'>#</a>
+      </div>
+      <p>new standard_price computation to be updated on the product</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">new_standard_price</span> <span class="o">=</span> <span class="mi">0</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-20'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-20'>#</a>
+      </div>
+      <p>to accumulate the value taken on the candidates</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">tmp_value</span> <span class="o">=</span> <span class="mi">0</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-21'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-21'>#</a>
+      </div>
+      <p>Loop over the origin move values and deduct the stock from it as needed for the return move</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-22'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-22'>#</a>
+      </div>
+      <p>Qty to be returned. It is min value of the available in current svl or the qty we wish to return</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">qty_taken_on_candidate</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">qty_to_take_on_candidates</span><span class="p">,</span> <span class="n">candidate</span><span class="o">.</span><span class="n">remaining_qty</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-23'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-23'>#</a>
+      </div>
+      <p>unit cost of the svl</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">candidate_unit_cost</span> <span class="o">=</span> <span class="n">candidate</span><span class="o">.</span><span class="n">remaining_value</span> <span class="o">/</span> <span class="n">candidate</span><span class="o">.</span><span class="n">remaining_qty</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-24'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-24'>#</a>
+      </div>
+      <p>current svl unit cost is considered as the new standard price for now.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">new_standard_price</span> <span class="o">=</span> <span class="n">candidate_unit_cost</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-25'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-25'>#</a>
+      </div>
+      <p>values to taken from the current candidate.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">value_taken_on_candidate</span> <span class="o">=</span> <span class="n">qty_taken_on_candidate</span> <span class="o">*</span> <span class="n">candidate_unit_cost</span>
+            <span class="n">value_taken_on_candidate</span> <span class="o">=</span> <span class="n">candidate</span><span class="o">.</span><span class="n">currency_id</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">value_taken_on_candidate</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-26'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-26'>#</a>
+      </div>
+      <p>new remaining value for the current candidate</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">new_remaining_value</span> <span class="o">=</span> <span class="n">candidate</span><span class="o">.</span><span class="n">remaining_value</span> <span class="o">-</span> <span class="n">value_taken_on_candidate</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-27'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-27'>#</a>
+      </div>
+      <p>values to be updated on the current candidate</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">candidate_vals</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;remaining_qty&#39;</span><span class="p">:</span> <span class="n">candidate</span><span class="o">.</span><span class="n">remaining_qty</span> <span class="o">-</span> <span class="n">qty_taken_on_candidate</span><span class="p">,</span>
+                <span class="s1">&#39;remaining_value&#39;</span><span class="p">:</span> <span class="n">new_remaining_value</span><span class="p">,</span>
+            <span class="p">}</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-28'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-28'>#</a>
+      </div>
+      <p>updating current candidate with the candidate values</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">candidate</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">candidate_vals</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-29'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-29'>#</a>
+      </div>
+      <p>updating the quantites to return from the quantity returned using the current candidate</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="n">qty_to_take_on_candidates</span> <span class="o">-=</span> <span class="n">qty_taken_on_candidate</span>
+            <span class="n">tmp_value</span> <span class="o">+=</span> <span class="n">value_taken_on_candidate</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-30'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-30'>#</a>
+      </div>
+      <p><strong>float_is_zero</strong> is used to find whether the given float is zero or not.
+if zero, it will return True else return False
+here we check that all the quantites that we returning is returned.
+And all the quantities are used in the current svl in the return process
+if so, the we will update the new_standard_price using the next candidates records</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>            <span class="k">if</span> <span class="n">float_is_zero</span><span class="p">(</span><span class="n">qty_to_take_on_candidates</span><span class="p">,</span> <span class="n">precision_rounding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">uom_id</span><span class="o">.</span><span class="n">rounding</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">float_is_zero</span><span class="p">(</span><span class="n">candidate</span><span class="o">.</span><span class="n">remaining_qty</span><span class="p">,</span> <span class="n">precision_rounding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">uom_id</span><span class="o">.</span><span class="n">rounding</span><span class="p">):</span>
+                    <span class="n">next_candidates</span> <span class="o">=</span> <span class="n">remaining_candidates</span><span class="o">.</span><span class="n">filtered</span><span class="p">(</span><span class="k">lambda</span> <span class="n">svl</span><span class="p">:</span> <span class="n">svl</span><span class="o">.</span><span class="n">remaining_qty</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">new_standard_price</span> <span class="o">=</span> <span class="n">next_candidates</span> <span class="ow">and</span> <span class="n">next_candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">unit_cost</span> <span class="ow">or</span> <span class="n">new_standard_price</span>
+                <span class="k">break</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-31'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-31'>#</a>
+      </div>
+      <p>Update the standard price of the product with the price of the last used candidate (new_standard_price), if any.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">if</span> <span class="n">new_standard_price</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_method</span> <span class="o">==</span> <span class="s1">&#39;fifo&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sudo</span><span class="p">()</span><span class="o">.</span><span class="n">with_company</span><span class="p">(</span><span class="n">company</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">with_context</span><span class="p">(</span><span class="n">disable_auto_svl</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">standard_price</span> <span class="o">=</span> <span class="n">new_standard_price</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-32'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-32'>#</a>
+      </div>
+      <p>If there&rsquo;s still quantity to value but we&rsquo;re out of candidates, we fall in the
+negative stock use case. We chose to value the out move at the price of the
+last out and a correction entry will be made once <code>_fifo_vacuum</code> is called.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">vals</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">float_is_zero</span><span class="p">(</span><span class="n">qty_to_take_on_candidates</span><span class="p">,</span> <span class="n">precision_rounding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">uom_id</span><span class="o">.</span><span class="n">rounding</span><span class="p">):</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="o">-</span><span class="n">tmp_value</span><span class="p">,</span>
+                <span class="s1">&#39;unit_cost&#39;</span><span class="p">:</span> <span class="n">tmp_value</span> <span class="o">/</span> <span class="n">quantity</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span> <span class="c1"># I don&#39;t think this will be in our case.</span>
+            <span class="k">assert</span> <span class="n">qty_to_take_on_candidates</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">last_fifo_price</span> <span class="o">=</span> <span class="n">new_standard_price</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">standard_price</span>
+            <span class="n">negative_stock_value</span> <span class="o">=</span> <span class="n">last_fifo_price</span> <span class="o">*</span> <span class="o">-</span><span class="n">qty_to_take_on_candidates</span>
+            <span class="n">tmp_value</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">negative_stock_value</span><span class="p">)</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;remaining_qty&#39;</span><span class="p">:</span> <span class="o">-</span><span class="n">qty_to_take_on_candidates</span><span class="p">,</span>
+                <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="o">-</span><span class="n">tmp_value</span><span class="p">,</span>
+                <span class="s1">&#39;unit_cost&#39;</span><span class="p">:</span> <span class="n">last_fifo_price</span><span class="p">,</span>
+            <span class="p">}</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-33'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-33'>#</a>
+      </div>
+      <p>returns the value of new valuation to be created for the returned move from the origin move.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">return</span> <span class="n">vals</span>
+
+</pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+</div>
+</body>
