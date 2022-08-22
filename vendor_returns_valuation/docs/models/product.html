@@ -193,13 +193,15 @@ control to base method to process it using the general flow.</p>
         <a class='octothorpe' href='#section-13'>#</a>
       </div>
       <p>Comparing the current move quantity and available origin move quantity.
-Result of float_compare should be zero. It means both values are same.
-As per our specs, we can return the origin move as the quantity is matched.
-If the result is not zero, then we have to post the message on the return picking
+Result of float_compare should not be equal to one.
+It means returning qty must be less than or equal to the origin move qty.
+As per our specs, we can return the origin move if the quantity is matched (full return).
+or else the return qty should be less than origin move (partial return).
+If the result is equal to one, then we have to post the message on the return picking
 and give control to base metod.</p>
     </div>
     <div class='code'>
-      <div class="highlight"><pre>        <span class="k">if</span> <span class="n">float_compare</span><span class="p">(</span><span class="n">svl_move_qty</span><span class="p">,</span> <span class="n">origin_move_remaining_qty</span><span class="p">,</span> <span class="n">precision_digits</span><span class="o">=</span><span class="n">digits</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+      <div class="highlight"><pre>        <span class="k">if</span> <span class="n">float_compare</span><span class="p">(</span><span class="n">svl_move_qty</span><span class="p">,</span> <span class="n">origin_move_remaining_qty</span><span class="p">,</span> <span class="n">precision_digits</span><span class="o">=</span><span class="n">digits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">svl_move</span><span class="o">.</span><span class="n">picking_id</span><span class="o">.</span><span class="n">message_post</span><span class="p">(</span>
                 <span class="n">body</span><span class="o">=</span><span class="s2">&quot;Some or all units for product </span><span class="si">{0}</span><span class="s2"> (ID: </span><span class="si">{1}</span><span class="s2">) have already been consumed in other operations. FIFO costing will be used.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">svl_move</span><span class="o">.</span><span class="n">product_id</span><span class="o">.</span><span class="n">default_code</span><span class="p">,</span> <span class="n">svl_move</span><span class="o">.</span><span class="n">product_id</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
                 <span class="n">subtype_xmlid</span><span class="o">=</span><span class="s2">&quot;mail.mt_note&quot;</span><span class="p">,</span>

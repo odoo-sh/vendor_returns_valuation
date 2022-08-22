@@ -52,11 +52,13 @@ class ProductProduct(models.Model):
         # Product UOM decimal accuracy for rounding move quantity and origin move quantity
         digits = self.env.ref('product.decimal_product_uom').digits or 2
         # Comparing the current move quantity and available origin move quantity.
-        # Result of float_compare should be zero. It means both values are same.
-        # As per our specs, we can return the origin move as the quantity is matched.
-        # If the result is not zero, then we have to post the message on the return picking
+        # Result of float_compare should not be equal to one.
+        # It means returning qty must be less than or equal to the origin move qty.
+        # As per our specs, we can return the origin move if the quantity is matched (full return).
+        # or else the return qty should be less than origin move (partial return).
+        # If the result is equal to one, then we have to post the message on the return picking
         # and give control to base metod.
-        if float_compare(svl_move_qty, origin_move_remaining_qty, precision_digits=digits) != 0:
+        if float_compare(svl_move_qty, origin_move_remaining_qty, precision_digits=digits) == 1:
             svl_move.picking_id.message_post(
                 body="Some or all units for product {0} (ID: {1}) have already been consumed in other operations. FIFO costing will be used.".format(svl_move.product_id.default_code, svl_move.product_id.id),
                 subtype_xmlid="mail.mt_note",
